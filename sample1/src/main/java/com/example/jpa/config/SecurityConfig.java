@@ -13,6 +13,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter{
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		
+		http.csrf().disable();
+		http.headers().frameOptions().sameOrigin();
+		
 		// 모든 경로에 대해 액세스를 허용하겠다.
 		http.authorizeRequests().anyRequest().permitAll();
 	}

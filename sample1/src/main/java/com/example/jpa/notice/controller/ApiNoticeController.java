@@ -4,15 +4,40 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.jpa.notice.entity.Notice;
+import com.example.jpa.notice.model.NoticeInput;
 import com.example.jpa.notice.model.NoticeModel;
+import com.example.jpa.notice.repository.NoticeRepository;
 
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
 @RestController
 public class ApiNoticeController {
 	
+//	// 기존 방식 
+//	@Autowired
+//	NoticeRepository noticeRepository;
+//	
+//	// 요즘 방식
+//	// 생성자에서 주입받음
+//	public ApiNoticeController(NoticeRepository noticeRepository) {
+//		this.noticeRepository = noticeRepository;
+//	}
 	
+	// @RequiredArgsConstructor 사용
+	private NoticeRepository noticeRepository;
+	
+
 	@GetMapping("/api/notice")
 	public String noticeString() {
 		return "공지사항입니다.";
@@ -76,6 +101,64 @@ public class ApiNoticeController {
 				.build());
 
 		
+		return notice;
+	}
+	
+	@GetMapping("/api/noticelist3")
+	public List<NoticeModel> noticeList3(){
+
+		List<NoticeModel> noticeList = new ArrayList<>();
+		return noticeList;
+	}
+	
+	@GetMapping("/api/notice/count")
+	public int noticeCount() {
+		return 10;
+	}
+	
+	// = @RequestMapping(value="/api/notice", method = RequestMethod.POST)
+	// POST 이기 때문에 기존에 있는 GET 방식과 url 동일해도 괜찮음
+	@PostMapping("/api/notice")
+	// @RequestParam : 명시적으로 파라미터로 값을 받는다고 표시
+	public NoticeModel addNotice(@RequestParam String title, @RequestParam String contents) {
+		NoticeModel notice = NoticeModel.builder()
+				.id(1)
+				.title(title)
+				.contents(contents)
+				.regDate(LocalDateTime.now())
+				.build();
+		
+		return notice;
+	}
+	
+	@PostMapping("/api/notice2")
+	public NoticeModel addNotice2(NoticeModel noticeModel) {
+
+		noticeModel.setId(2);
+		noticeModel.setRegDate(LocalDateTime.now());
+		
+		return noticeModel;
+	}
+	
+	@PostMapping("/api/addnotice3")
+	// json 형태로 받기 때문에 @RequestBody라고 명시해야 함
+	public NoticeModel addNotice3(@RequestBody NoticeModel noticeModel) {
+
+		noticeModel.setId(3);
+		noticeModel.setRegDate(LocalDateTime.now());
+		
+		return noticeModel;
+	}
+	
+	@PostMapping("/api/addnotice4")
+	public Notice addNotice4(@RequestBody NoticeInput noticeInput) {
+		
+		Notice notice = Notice.builder()
+				.title(noticeInput.getTitle())
+				.contents(noticeInput.getContents())
+				.regDate(LocalDateTime.now())
+				.build();
+		noticeRepository.save(notice);
 		return notice;
 	}
 }
