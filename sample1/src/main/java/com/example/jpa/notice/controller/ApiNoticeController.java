@@ -5,9 +5,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import javax.validation.Valid;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.Errors;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,10 +30,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.jpa.notice.entity.Notice;
 import com.example.jpa.notice.exception.AlreadyDeletedException;
+import com.example.jpa.notice.exception.DuplicateNoticeException;
 import com.example.jpa.notice.exception.NoticeNotFoundException;
 import com.example.jpa.notice.model.NoticeDeleteInput;
 import com.example.jpa.notice.model.NoticeInput;
 import com.example.jpa.notice.model.NoticeModel;
+import com.example.jpa.notice.model.ResponseError;
 import com.example.jpa.notice.repository.NoticeRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -127,7 +136,7 @@ public class ApiNoticeController {
 	public int noticeCount() {
 		return 10;
 	}
-	
+/*	
 	// = @RequestMapping(value="/api/notice", method = RequestMethod.POST)
 	// POST 이기 때문에 기존에 있는 GET 방식과 url 동일해도 괜찮음
 	@PostMapping("/api/notice")
@@ -142,7 +151,7 @@ public class ApiNoticeController {
 		
 		return notice;
 	}
-	
+	*/
 	@PostMapping("/api/notice2")
 	public NoticeModel addNotice2(NoticeModel noticeModel) {
 
@@ -317,5 +326,124 @@ public class ApiNoticeController {
 		
 		noticeRepository.deleteAll();
 		
+	}
+	
+	
+	// 게시판 작성
+	@PostMapping("/api/addnotice")
+	public void addNotice(@RequestBody Notice noticeInput) {
+		Notice notice = Notice.builder()
+				.title(noticeInput.getTitle())
+				.contents(noticeInput.getContents())
+				.hits(0)
+				.likes(0)
+				.regDate(LocalDateTime.now())
+				.build();
+		
+		noticeRepository.save(notice);
+		
+	}
+	
+	
+	@PostMapping("/api/addnotice2")
+	public ResponseEntity<Object> addNotice2(@RequestBody Notice noticeInput) {
+		if(noticeInput.getTitle() == null ||
+				noticeInput.getTitle().length() < 1 ||
+				noticeInput.getContents() == null ||
+				noticeInput.getContents().length() < 1) {
+			return new ResponseEntity<>("입력값이 정확하지 않습니다.", HttpStatus.BAD_REQUEST);
+		}
+		
+		// 정상적인 저장 로직	
+		noticeRepository.save(Notice.builder()
+				.title(noticeInput.getTitle())
+				.contents(noticeInput.getContents())
+				.hits(0)
+				.likes(0)
+				.regDate(LocalDateTime.now())
+				.build());
+		
+		return ResponseEntity.ok().build();
+	}
+	
+	@PostMapping("/api/adnotice3")
+	public ResponseEntity<Object> adNotice3(@RequestBody @Valid NoticeInput noticeInput, Errors errors) {
+		
+		if(errors.hasErrors()) {
+//			return new ResponseEntity<>(errors.getAllErrors(), HttpStatus.BAD_REQUEST);
+			List<ResponseError> responseErrors = new ArrayList<>();
+			
+//			errors.getAllErrors().stream().forEach(e -> {
+//				ResponseError responseError = new ResponseError();
+//				responseError.setField(((FieldError)e).getField());
+//				responseError.setMessage(e.getDefaultMessage());
+//				responseErrors.add(responseError);
+//			});
+			
+			errors.getAllErrors().stream().forEach(e -> {
+				responseErrors.add(ResponseError.of((FieldError)e));
+			});
+			return new ResponseEntity<>(responseErrors, HttpStatus.BAD_REQUEST);
+		}
+		// 정상적인 저장 로직	
+		noticeRepository.save(Notice.builder()
+				.title(noticeInput.getTitle())
+				.contents(noticeInput.getContents())
+				.hits(0)
+				.likes(0)
+				.regDate(LocalDateTime.now())
+				.build());
+		
+		return ResponseEntity.ok().build();
+	}
+	
+	@GetMapping("/api/notice/latest/{size}")
+	public Page<Notice> noticeLatest(@PathVariable int size){
+		
+		Page<Notice> noticeList = 
+		noticeRepository.findAll(PageRequest.of(0, size, Sort.Direction.DESC, "regDate"));
+		
+		return noticeList;
+	}
+	
+	
+	@ExceptionHandler(DuplicateNoticeException.class)
+	public ResponseEntity handlerDuplicateNoticeException(DuplicateNoticeException exception) {
+		return new ResponseEntity<>(exception.getMessage(), HttpStatus.BAD_REQUEST);
+	}
+	
+	@PostMapping("/api/adnotice4")
+	public ResponseEntity<Object> adNotice4(@RequestBody NoticeInput noticeInput) {
+		
+		// 중복체크
+		LocalDateTime checkDate = LocalDateTime.now().minusMinutes(1);
+		
+//		Optional<List<Notice>> noticeList = noticeRepository.findByTitleAndContentsAndRegDateIsGreaterThanEqual(
+//				noticeInput.getTitle()
+//				, noticeInput.getContents()
+//				, checkDate);
+//		if(noticeList.isPresent()) {
+//			if(noticeList.get().size()>0) {
+//				throw new DuplicateNoticeException("1분 이내에 등록된 동일한 공지사항이 존재합니다.");
+//			}
+//		}
+		
+		int noticeCount = noticeRepository.countByTitleAndContentsAndRegDateIsGreaterThanEqual(
+				noticeInput.getTitle()
+				, noticeInput.getContents()
+				, checkDate);
+		if(noticeCount > 0) {
+			throw new DuplicateNoticeException("1분 이내에 등록된 동일한 공지사항이 존재합니다.");
+		}
+		
+		noticeRepository.save(Notice.builder()
+				.title(noticeInput.getTitle())
+				.contents(noticeInput.getContents())
+				.hits(0)
+				.likes(0)
+				.regDate(LocalDateTime.now())
+				.build());
+		
+		return ResponseEntity.ok().build();
 	}
 }

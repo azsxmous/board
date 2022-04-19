@@ -1,5 +1,6 @@
 package com.example.jpa.notice.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,5 +13,7 @@ public interface NoticeRepository extends JpaRepository<Notice, Long>{
 	
 	Optional<List<Notice>> findByIdIn(List<Long> idList);
 	
+	Optional<List<Notice>> findByTitleAndContentsAndRegDateIsGreaterThanEqual(String title, String contents, LocalDateTime regDate);
 	
+	int countByTitleAndContentsAndRegDateIsGreaterThanEqual(String title, String contents, LocalDateTime regDate);
 }
