@@ -7,6 +7,10 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+
+import com.example.jpa.user.entity.User;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +27,10 @@ public class Notice {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private long id;
+	
+	@ManyToOne
+	@JoinColumn
+	private User user;
 	
 	@Column
 	private String title;
