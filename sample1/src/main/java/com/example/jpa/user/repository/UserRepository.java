@@ -9,5 +9,7 @@ import com.example.jpa.user.entity.User;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
+	
+	int countByEmail(String email);
 
 }
