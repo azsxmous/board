@@ -8,11 +8,13 @@ import javax.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -25,8 +27,10 @@ import com.example.jpa.notice.model.ResponseError;
 import com.example.jpa.notice.repository.NoticeRepository;
 import com.example.jpa.user.entity.User;
 import com.example.jpa.user.exception.ExistsEmailExcetion;
+import com.example.jpa.user.exception.PasswordNotMatchException;
 import com.example.jpa.user.exception.UserNotFoundException;
 import com.example.jpa.user.model.UserInput;
+import com.example.jpa.user.model.UserInputPassword;
 import com.example.jpa.user.model.UserResponse;
 import com.example.jpa.user.model.UserUpdate;
 import com.example.jpa.user.repository.UserRepository;
@@ -174,9 +178,71 @@ public class ApiUserController {
 		// return new ResponseEntity<>(HttpStatus.OK);
 	}
 	
-	@ExceptionHandler(ExistsEmailExcetion.class)
-	public ResponseEntity<?> ExistsEmailExceptionHandler(ExistsEmailExcetion exception) {
+	@ExceptionHandler(value = {ExistsEmailExcetion.class, PasswordNotMatchException.class})
+	public ResponseEntity<?> ExistsEmailExceptionHandler(RuntimeException exception) {
 	
 		return new ResponseEntity<>(exception.getMessage(), HttpStatus.BAD_REQUEST);
 	}
+	
+	// localhost:8080/api/user/4/password
+	// { "password":"4444", "newPassword" : "2222"}
+	@PatchMapping("/api/user/{id}/password")
+	public ResponseEntity<?> updateUserPassword(@PathVariable Long id, @RequestBody UserInputPassword userInputPassword, Errors errors) {
+		
+		List<ResponseError> responseErrorList = new ArrayList<>();
+		if(errors.hasErrors()) {
+			errors.getAllErrors().stream().forEach((e) -> {
+				responseErrorList.add(ResponseError.of((FieldError)e));
+			});
+			return new ResponseEntity<>(responseErrorList, HttpStatus.BAD_REQUEST);
+		}
+		
+		User user = userRepository.findByIdAndPassword(id, userInputPassword.getPassword())
+				.orElseThrow(() -> new PasswordNotMatchException("비밀번호가 일치하지 않습니다."));
+		
+		user.setPassword(userInputPassword.getNewPassword());
+		
+		userRepository.save(user);
+		
+		return ResponseEntity.ok().build();
+		
+	}
+	
+	// 비밀번호 암호화 함수
+	private String getEncryptPassword(String password) {
+		BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
+		return bCryptPasswordEncoder.encode(password);
+	}
+	
+	@PostMapping("/api/user4")
+	public ResponseEntity<?> addUser4(@RequestBody @Valid UserInput userInput, Errors errors){
+		
+		List<ResponseError> responseErrorList = new ArrayList<>();
+		if(errors.hasErrors()) {
+			errors.getAllErrors().stream().forEach((e) -> {
+				responseErrorList.add(ResponseError.of((FieldError)e));
+			});
+			return new ResponseEntity<>(responseErrorList, HttpStatus.BAD_REQUEST);
+		}
+
+		if(userRepository.countByEmail(userInput.getEmail()) > 0) {
+			throw new ExistsEmailExcetion("이미 존재하는 이메일입니다.");
+		}
+		
+		// 비밀번호 암호화
+		String encryptPassword = getEncryptPassword(userInput.getPassword());
+		
+		User user = User.builder()
+				.email(userInput.getEmail())
+				.userName(userInput.getUserName())
+				.password(encryptPassword)
+				.phone(userInput.getPhone())
+				.regDate(LocalDateTime.now())
+				.build();
+		
+		userRepository.save(user);
+		
+		return ResponseEntity.ok().build();
+	}
+	
 }
