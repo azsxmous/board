@@ -32,6 +32,7 @@ import com.example.jpa.user.exception.ExistsEmailExcetion;
 import com.example.jpa.user.exception.PasswordNotMatchException;
 import com.example.jpa.user.exception.UserNotFoundException;
 import com.example.jpa.user.model.UserInput;
+import com.example.jpa.user.model.UserInputFind;
 import com.example.jpa.user.model.UserInputPassword;
 import com.example.jpa.user.model.UserResponse;
 import com.example.jpa.user.model.UserUpdate;
@@ -265,5 +266,16 @@ public class ApiUserController {
 		}
 		
 		return ResponseEntity.ok().build();
+	}
+	
+	// localhost:8080/api/user
+	@GetMapping("/api/user")
+	public ResponseEntity<?> findUser(@RequestBody UserInputFind userInputFind) {
+		User user = userRepository.findByUserNameAndPhone(userInputFind.getUserName(), userInputFind.getPhone())
+				.orElseThrow(() -> new UserNotFoundException("사용자 정보가 없습니다."));
+		
+		UserResponse userResponse = UserResponse.of(user);
+		
+		return ResponseEntity.ok().body(userResponse);
 	}
 }
