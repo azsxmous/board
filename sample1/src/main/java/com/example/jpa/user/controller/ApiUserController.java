@@ -3,6 +3,7 @@ package com.example.jpa.user.controller;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import javax.validation.Valid;
 
@@ -277,5 +278,31 @@ public class ApiUserController {
 		UserResponse userResponse = UserResponse.of(user);
 		
 		return ResponseEntity.ok().body(userResponse);
+	}
+	
+	// localhost:8080/api/user/1/password/reset
+	@GetMapping("/api/user/{id}/password/reset")
+	public ResponseEntity<?> resetUserPassword(@PathVariable Long id) {
+		User user = userRepository.findById(id)
+				.orElseThrow(() -> new UserNotFoundException("사용자 정보가 없습니다."));
+		// 비밀번호 초기화
+		String resetPassword = getResetPassword();
+		user.setPassword(resetPassword);
+		userRepository.save(user);
+		
+		// 문자메시지 전송
+		String message = String.format("[%s]님의 임시비밀번호가 [%s]로 초기화 되었습니다." , user.getUserName(), resetPassword);
+		sendSMS(message);
+		
+		return ResponseEntity.ok().build();
+	}
+	
+	private String getResetPassword() {
+		return UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+	}
+	
+	void sendSMS(String message) {
+		System.out.println("[문자메시지전송]");
+		System.out.println(message);
 	}
 }
